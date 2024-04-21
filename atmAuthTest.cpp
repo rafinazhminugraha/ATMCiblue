@@ -1,22 +1,28 @@
 #include <iostream>
+#include <vector>
+#include <cstring>
 using namespace std;
 
-// hierarcial struct used to pack user data
-struct DATA {
-    string nama;
-    string pin;
-    string nomorKartu;
+// hierarcial struct used to pack transaction data
+struct TRANSAKSI {
+    int nominal;
+    string kategori;
+    string keteranganWaktu;
 };
 
 // double linked list struct
-struct NODE {
-    DATA user;
-    NODE *prev;
-    NODE *next;
+struct NASABAH {
+    string nama;
+    string pin;
+    string nomorKartu;
+    int jumlahSaldo;
+    vector<TRANSAKSI> riwayatTransaksi;
+    NASABAH *prev;
+    NASABAH *next;
 };
 
-NODE *head;
-NODE *tail;
+NASABAH *head;
+NASABAH *tail;
 
 bool kosong() {
     if (head == NULL) {
@@ -24,12 +30,13 @@ bool kosong() {
     } return false;
 }
 
-void tambahAwal(string nama, string pin, string nomorKartu) {
-    NODE *nodeBaru;
-    nodeBaru = new NODE;
-    nodeBaru -> user.nama = nama;
-    nodeBaru -> user.pin = pin;
-    nodeBaru -> user.nomorKartu = nomorKartu;
+void tambahAkun(string nama, string pin, string nomorKartu) {
+    NASABAH *nodeBaru;
+    nodeBaru = new NASABAH;
+    nodeBaru->nama = nama;
+    nodeBaru->pin = pin;
+    nodeBaru->nomorKartu = nomorKartu;
+    nodeBaru->jumlahSaldo = 0;
 
     if (kosong()) {
         head = nodeBaru;
@@ -41,23 +48,23 @@ void tambahAwal(string nama, string pin, string nomorKartu) {
     }
 }
 
-void hapusAkhir() {
-    NODE *hapus, *current;
+void hapusAkun() {
+    NASABAH *hapus, *current;
     string nama, pin, nomorKartu;
 
     if (kosong()) {
         head = NULL;
-    } else if (head -> next == NULL) {
+    } else if (head->next == NULL) {
         hapus = head;
         head = NULL; tail = NULL;
         delete hapus;
     } else {
         current = head;
-        while (current -> next -> next != NULL) {
-            current = current -> next;
-        } delete current -> next;
+        while (current->next->next != NULL) {
+            current = current->next;
+        } delete current->next;
 
-        current -> next = NULL;
+        current->next = NULL;
         tail = current;
     }
 }
@@ -112,7 +119,7 @@ int cekString(string str, bool isDigit, char spesial = '<') {
 }
 
 string buatNomorRandom(int panjang) {
-    NODE *current;
+    NASABAH *current;
     current = head;
 
     string nomor = "";
@@ -121,33 +128,51 @@ string buatNomorRandom(int panjang) {
     for (int i = 0; i < panjang; i++) {
         nomor += to_string(rand() % 9);
     } while (current != NULL) {
-        if (nomor == current -> user.nomorKartu) {
+        if (nomor == current->nomorKartu) {
             buatNomorRandom(panjang);
-        } current = current -> next;
+        } current = current->next;
     } return nomor;
 }
 
-void tampilkanList() {
+void tampilkanTransaksi(NASABAH* nasabah) {
+    if (nasabah != nullptr) {
+        cout << "Riwayat Transaksi: " << endl;
+        for (const TRANSAKSI& transaksi : nasabah->riwayatTransaksi) {
+            cout << transaksi.keteranganWaktu << endl;
+            cout << "Nominal: Rp" << transaksi.nominal << endl;
+            cout << "Kategori: " << transaksi.kategori << endl;
+            cout << "-------------------------" << endl;
+        }
+    } else {
+        cout << "NODE Nasabah == NULL";
+    }
+}
+
+void tampilkanNasabah() {
     system("cls");
 
     if (!kosong()) {
-        NODE *current;
+        NASABAH *current;
         current = head;
         int nomor = 1;
 
         while (current != NULL) {
-            cout << "List [" << nomor << "]" << endl;
-            cout << "Nama	     : " << kapital(current -> user.nama, true, true) << endl;
-            cout << "PIN	     : " << current -> user.pin << endl;
-            cout << "Nomor Kartu : " << current -> user.nomorKartu << endl << endl;
+            cout << "[" << nomor << "]" << endl;
+            cout << "Nama: " << kapital(current->nama, true, true) << endl;
+            cout << "PIN: " << current->pin << endl;
+            cout << "Nomor Kartu: " << current->nomorKartu << endl;
+            cout << "Jumlah Saldo: Rp" << current->jumlahSaldo << endl << endl;
 
-            current = current -> next;
+            tampilkanTransaksi(current);
+
+            current = current->next;
             nomor += 1;
         } cout << endl;
     } else {
-        cout << "List masih kosong." << endl;
+        cout << "Belum ada nasabah yang terdaftar." << endl;
     } system("pause");
 }
+
 
 void peringatan(string teks, bool jeda = true, bool bersihkan = true, bool back = false) {
     cout << endl << teks;
@@ -214,45 +239,87 @@ string menu(string opsi[], int banyak, bool bersihkan) {
     return inputOpsi;
 }
 
-string getData(string nama, string pin, string dataUser) {
-    NODE *current;
-    current = head;
+NASABAH* cariNasabahKartu(NASABAH *head, string nomorKartu) {
+    NASABAH* current = head;
 
-    // linear search
-    while (current != NULL) {
-        if (nama == current -> user.nama && pin == current -> user.pin) {
-            if (dataUser == "nama") {
-                return current -> user.nama;
-            } else if (dataUser == "nomorKartu") {
-                return current -> user.nomorKartu;
-            } else if (dataUser == "pin") {
-                return current -> user.pin;
-            }
-        }
-    } return "invalid";
+    while (current != nullptr) {
+        if (nomorKartu == current->nomorKartu) {
+            return current;
+        } current = current->next;
+    } return nullptr;
 }
 
-int masuk(string nama, string nomorKartu, string pin) {
-    NODE *current;
+NASABAH* cariNasabahNama(NASABAH *head, string nama) {
+    NASABAH* current = head;
+
+    while (current != nullptr) {
+        if (nama == current->nama) {
+            return current;
+        } current = current->next;
+    } return nullptr;
+}
+
+void tambahTransaksi(NASABAH *nasabah, int nominal, string keterangan) {
+    if (nasabah != nullptr) {
+        TRANSAKSI transaksiBaru;
+        transaksiBaru.nominal = nominal;
+        transaksiBaru.kategori = keterangan;
+
+        time_t now = time(0);
+        char* dt = ctime(&now);
+        dt[strlen(dt) - 1] = '\0';
+        transaksiBaru.keteranganWaktu = string(dt);
+
+        nasabah->riwayatTransaksi.push_back(transaksiBaru);
+    }
+}
+
+void ubahSaldo(NASABAH* nasabah, int nominal, bool isTambah) {
+    if (nasabah != nullptr) {
+        if (isTambah) {
+            nasabah->jumlahSaldo += nominal;
+            tambahTransaksi(nasabah, nominal, "SETOR TUNAI");
+        } else {
+            nasabah->jumlahSaldo -= nominal;
+            tambahTransaksi(nasabah, nominal, "TRANSFER");
+        }
+    } else {
+        cout << "NODE Nasabah == NULL";
+    }
+}
+
+int masuk(string nomorKartu, string pin) {
+    NASABAH *current;
     current = head;
 
     // linear search
     while (current != NULL) {
         // three possible ouput used to represent loggedin, wrong pin, and not registered
-        if ((nama == current -> user.nama || nomorKartu == current -> user.nomorKartu) && pin == current -> user.pin) {
+        if (nomorKartu == current->nomorKartu && pin == current -> pin) {
             return 0;
-        } else if ((nama == current -> user.nama || nomorKartu == current -> user.nomorKartu) && pin != current -> user.pin) {
+        } else if (nomorKartu == current->nomorKartu && pin != current->pin) {
             return 1;
-        } current = current -> next;
+        } current = current->next;
     } return 2;
+}
+
+bool isUseExist(string nama, string nomorKartu) {
+    NASABAH *current;
+    current = head;
+
+    while (current != NULL) {
+        if (nama == current->nama && nomorKartu == current->nomorKartu) {
+            return true;
+        } current = current->next;
+    } return false;
 }
 
 bool daftar(string nama, string pin) {
     string nomorKartu = "000" + buatNomorRandom(3);
     
     // register new user if not registered yet (based on its nama)
-    if (masuk(nama, pin, nomorKartu) == 2) {
-        tambahAwal(nama, pin, nomorKartu);
+    if (!isUseExist(nama, nomorKartu)) {
+        tambahAkun(nama, pin, nomorKartu);
         return false;
     } else {
         return true;
@@ -260,13 +327,16 @@ bool daftar(string nama, string pin) {
 }
 
 int main() {
+    NASABAH *nasabah;
     string namaMasuk, pinMasuk, kartuMasuk;
     string namaDaftar, pinDaftar, kartuDaftar;
+    int saldoAwalDaftar;
     int limit = 3;
     int isLoggedin;
     bool isRegistered;
     bool isNamaAlpha; bool namaLimit; bool kartuLimit;
     bool isPinDigit; bool pinLimit; bool isKartuDigit;
+    bool isSaldoAwalDigit; bool saldoAwalLimit;
 
     string selamatDatang[] = {"selamat datang", "di atm kantongku"};
     string headerMasuk[] = {"menu", "masuk"};
@@ -286,7 +356,7 @@ int main() {
             } else if (opsi == "2") {
                 goto menuDaftar;
             } else if (opsi == "3") {
-                goto menuTampilan;
+                goto menuDaftarNasabah;
             } else if (opsi == "4") {
                 goto menuKeluar;
             } else {
@@ -316,7 +386,7 @@ int main() {
 
                     inputNamaMasuk:
                         while (true) {
-                            cout << "Nama	     : "; cin.ignore(); getline(cin, namaMasuk);
+                            cout << "Nama: "; cin.ignore(); getline(cin, namaMasuk);
                             namaMasuk = kapital(namaMasuk, false, false);
 
                             cekNamaMasuk:
@@ -335,14 +405,14 @@ int main() {
 
                             tampilkanHeader(headerMasuk, 2, "#=#=", 32);
                             peringatan("Input (<) untuk KEMBALI", false, false, true);
-                            cout << "Nama	     : "; getline(cin, namaDaftar); 
+                            cout << "Nama: "; getline(cin, namaMasuk);
                             namaMasuk = kapital(namaMasuk, false, false);
                             goto cekNamaMasuk;
                         }
 
                     inputNomorMasuk:
                         while (true) {
-                            cout << "Nomor Kartu : "; cin >> kartuMasuk;
+                            cout << "Nomor Kartu: "; cin >> kartuMasuk;
 
                             isKartuDigit = cekString(kartuMasuk, true) == 0;
                             kartuLimit = kartuMasuk.length() == 6;
@@ -364,7 +434,7 @@ int main() {
 
                     inputPinMasuk:
                         while (limit > 0) {
-                            cout << "PIN	     : "; cin >> pinMasuk;
+                            cout << "PIN: "; cin >> pinMasuk;
 
                             isPinDigit = cekString(pinMasuk, true) == 0;
                             pinLimit = pinMasuk.length() == 6;
@@ -382,21 +452,41 @@ int main() {
 
                             tampilkanHeader(headerMasuk, 2, "#=#=", 32);
                             peringatan("Input (<) untuk KEMBALI", false, false, true);
-                            cout << "Nama	     : " << kapital(namaMasuk, true, true) << endl;
-                            cout << "Nomor Kartu : " << kartuMasuk << endl;
+                            if (opsi == "1") {
+                                cout << "Nama: " << kapital(namaMasuk, true, true) << endl;
+                            }
+                            else if (opsi == "2") {
+                                cout << "Nomor Kartu: " << kartuMasuk << endl;
+                            }
                             continue;
 
                             inputPinMasukLoop:
                                 tampilkanHeader(headerMasuk, 2, "#=#=", 32);
                                 peringatan("Input (<) untuk KEMBALI", false, false, true);
-                                cout << "Nama        : " << kapital(namaMasuk, true, true) << endl;
-                                cout << "Nomor Kartu : " << kartuMasuk << endl;
-                                cout << "PIN         : "; cin >> pinMasuk;
+                                if (opsi == "1") {
+                                    cout << "Nama: " << kapital(namaMasuk, true, true) << endl;
+                                } else if (opsi == "2") {
+                                    cout << "Nomor Kartu: " << kartuMasuk << endl;
+                                }
+                                cout << "PIN: "; cin >> pinMasuk;
                                 goto cekPinMasuk;
-
                         }
                     
-                    isLoggedin = masuk(namaMasuk, kartuMasuk, pinMasuk);
+                    if (opsi == "1") {
+                        nasabah = cariNasabahNama(head, namaMasuk);
+                        if (nasabah != nullptr) {
+                            kartuMasuk = nasabah->nomorKartu;
+                        } else {
+                            goto verifyingMasuk;
+                        }
+                    } else if (opsi == "2") {
+                        nasabah = cariNasabahKartu(head, kartuMasuk);
+                        if (nasabah != nullptr) {
+                            namaMasuk = nasabah->nama;
+                        } else {
+                            goto verifyingMasuk;
+                        }
+                    } verifyingMasuk: isLoggedin = masuk(kartuMasuk, pinMasuk);
 
                     if (isLoggedin == 0) {
                         // next step here
@@ -414,7 +504,7 @@ int main() {
                         peringatan("PIN yang Anda masukkan salah!", false, false);
                         peringatan("Batas percobaan " + to_string(limit) + "x lagi.");
                         goto inputPinMasukLoop;
-                    } else {
+                    } else if (isLoggedin == 2) {
                         peringatan("Belum terdaftar sebagai nasabah!", false, false);
                         peringatan("Menuju MENU DAFTAR...");
                         goto menuDaftar;
@@ -428,7 +518,7 @@ int main() {
 
                 inputNamaDaftar:
                     while (true) {
-                        cout << "Nama	     : "; cin.ignore(); getline(cin, namaDaftar); 
+                        cout << "Nama: "; cin.ignore(); getline(cin, namaDaftar); 
                         namaDaftar = kapital(namaDaftar, false, false);
 
                         cekNamaDaftar:
@@ -447,14 +537,14 @@ int main() {
 
                         tampilkanHeader(headerDaftar, 2, "#=#=", 32);
                         peringatan("Input (<) untuk KEMBALI", false, false, true);
-                        cout << "Nama	     : "; getline(cin, namaDaftar); 
+                        cout << "Nama: "; getline(cin, namaDaftar); 
                         namaDaftar = kapital(namaDaftar, false, false);
                         goto cekNamaDaftar;
                     }
 
                 inputPinDaftar:
                     while (true) {
-                        cout << "PIN	     : "; cin >> pinDaftar;
+                        cout << "PIN: "; cin >> pinDaftar;
 
                         isPinDigit = cekString(pinDaftar, true) == 0;
                         pinLimit = pinDaftar.length() == 6;
@@ -471,7 +561,7 @@ int main() {
 
                         tampilkanHeader(headerDaftar, 2, "#=#=", 32);
                         peringatan("Input (<) untuk KEMBALI", false, false, true);
-                        cout << "Nama   : " << kapital(namaDaftar, true, true) << endl;
+                        cout << "Nama: " << kapital(namaDaftar, true, true) << endl;
                         continue;
                     }
 
@@ -480,17 +570,48 @@ int main() {
                 if (isRegistered) {
                     peringatan("Nasabah dengan nama ini sudah terdaftar!", false, false);
                     peringatan("Menuju ke MENU MASUK...");
-                    continue;
-                } else {
-                    kartuDaftar = getData(namaDaftar, pinDaftar, "nomorKartu");
-                    cout << "Nomor Kartu : " << kartuDaftar << endl;
-                    peringatan("Selamat datang nasabah baru!");
                     goto menuMasuk;
+                } else {
+                    kartuDaftar = cariNasabahNama(head, namaDaftar)->nomorKartu;
+                    cout << "Nomor Kartu: " << kartuDaftar << endl;
                 }
 
-            menuTampilan:
+                inputSaldoAwal:
+                    while (true) {
+                        string inputSaldoAwal;
+                        cout << "Saldo Awal (min. Rp500000): Rp"; cin >> inputSaldoAwal;
+
+                        isSaldoAwalDigit = cekString(inputSaldoAwal, true) == 0;
+                        
+                        if (inputSaldoAwal == "<") {
+                            goto programUtama;
+                        } if (isSaldoAwalDigit) {
+                            saldoAwalDaftar = stoi(inputSaldoAwal);
+                            saldoAwalLimit = saldoAwalDaftar >= 500000;
+                            if (isSaldoAwalDigit && saldoAwalLimit) {
+                                break;
+                            } if (!saldoAwalLimit) {
+                                peringatan("Nominal saldo awal minimal Rp500000.", false, false);
+                            } 
+                        } else {
+                            peringatan("Input saldo awal harus berupa angka.", false, false);
+                        } cout << endl; system("pause");
+
+                        tampilkanHeader(headerDaftar, 2, "#=#=", 32);
+                        peringatan("Input (<) untuk KEMBALI", false, false, true);
+                        cout << "Nama: " << kapital(namaDaftar, true, true) << endl;
+                        cout << "PIN: " << pinDaftar << endl;
+                        cout << "Nomor Kartu: " << kartuDaftar << endl;
+                        continue;
+                    }
+                
+                ubahSaldo(cariNasabahKartu(head, kartuDaftar), saldoAwalDaftar, true);
+                peringatan("Selamat datang nasabah baru!");
+                goto programUtama;
+
+            menuDaftarNasabah:
                 tampilkanHeader(headerDaftar, 2, "#=#=", 32);
-                tampilkanList();
+                tampilkanNasabah();
                 continue;
 
             menuKeluar:
